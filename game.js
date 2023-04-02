@@ -8,6 +8,7 @@ const spanLives = document.querySelector ('#lives');
 const spanTime = document.querySelector ('#time');
 const spanRecord = document.querySelector ('#record');
 const pResult = document.querySelector ('#result');
+const btnReboot = document.querySelector ('#reboot');
 
 
 let canvasSize;
@@ -17,7 +18,7 @@ let lives = 3;
 let timeStart;
 let timePlayer;
 let timeInterval;
-
+let collisionInterval;
 
 const playerPosition = {
     x: undefined,
@@ -35,7 +36,8 @@ let enemyPositions = [];
 window.addEventListener('load', setCanvasSize);
 //cuando cambie el tamaño de la ventana funcionará la funcion setCanvasSize//
 window.addEventListener('resize', setCanvasSize);
-
+//esta funcion hace que el valor no tenga decimales//
+function fixNumber(n){return Number(n.toFixed(0));}
     function setCanvasSize () {
              //si el alto es las grande que el ancho, hara un cuadrado con las medidas del ancho, sino al reves//
         //innerWidth indica el ancho e innerHeight el ancho//
@@ -50,7 +52,7 @@ window.addEventListener('resize', setCanvasSize);
         canvas.setAttribute ('width', canvasSize);
         canvas.setAttribute ('height', canvasSize);
         //cambia el alto y ancho de los elementos dependiendo el tamaño del canvas//
-        elementsSize = canvasSize / 10;
+        elementsSize = fixNumber (canvasSize / 10);
         //cuando se cambia el tamaño del mapa, cambia la posicion del player para que se adapte a las nuevas medidas//
         playerPosition.x = undefined;
         playerPosition.y= undefined;
@@ -101,14 +103,14 @@ window.addEventListener('resize', setCanvasSize);
                 if (col == 'O') {
                     //si el usuario ya tiene una posición nueva aparece en esa posición y no en la inicial al hacer clearRect//
                     if (!playerPosition.x && !playerPosition.y) {
-                        playerPosition.x = posX;
-                        playerPosition.y = posY;
+                        playerPosition.x = fixNumber (posX);
+                        playerPosition.y = fixNumber (posY);
                         console.log({playerPosition});
                     }
                 }    
                     else if (col =='I') {
-                        giftPosition.x = posX;
-                        giftPosition.y = posY;
+                        giftPosition.x = Number(posX.toFixed(0));
+                        giftPosition.y = Number (posY.toFixed(0));
                     }
                     else if (col == 'X') {
                         enemyPositions.push (
@@ -122,7 +124,7 @@ window.addEventListener('resize', setCanvasSize);
             });
         });
         movePlayer();
-
+        showRecord();
         //hace un array bidimensional y trae los elementos del mapa//
        // for(let row=1; row<=10; row++) {
        //     for (let col=1; col<=10; col++) {
@@ -165,7 +167,9 @@ window.addEventListener('resize', setCanvasSize);
           return enemyCollisionX && enemyCollisionY  });
           
       if (enemyCollision) {
-        levelFail();
+        showColision();
+        //espera 1 segundo para empezar la funciona level fail//
+        setTimeout (levelFail,200);
     }
         
         game.fillText (emojis['PLAYER'], playerPosition.x, playerPosition.y);
@@ -184,35 +188,66 @@ window.addEventListener('resize', setCanvasSize);
         //verifica si se supero el record y guarda el record en el localStorage para que no se pierda//
         const playerTime =  Date.now () - timeStart;
         const recordTime= localStorage.getItem('record_time');
-
+        msjHappy('GANASTE');
         if (recordTime) {
             if (recordTime >= playerTime ) {
                 localStorage.setItem ('record_time', playerTime);
                 pResult.innerHTML ='superaste el record';
-
+                msjRecord('superaste el record');
             }else {
                 pResult.innerHTML ='no superaste el record';
+                msjRecord('no superaste el record');
             }
         }else {
             localStorage.setItem ('record_time', playerTime);
             pResult.innerHTML ='muy bien para ser la primera vez';
-
+            msjRecord ('muy bien para ser la primera vez');
         }
         console.log(recordTime,playerTime);
+      }
+      //genera un mensaje en canvas//
+      function msjHappy (msj) {
+        game.fillStyle = 'green';
+        game.fillRect(0, (canvasSize/2.5), canvasSize, (canvasSize/10));
+        game.fillStyle = 'yellow';
+        game.textAlign = 'center';
+        game.fillText(msj,(canvasSize/2),(canvasSize/2));
+      }
+      function msjSad (msj) {
+        game.fillStyle = 'red';
+        game.fillRect(0, (canvasSize/2.5), canvasSize, (canvasSize/10));
+        game.fillStyle = 'black';
+        game.textAlign = 'center';
+        game.fillText(msj,(canvasSize/2),(canvasSize/2));
+      }
+      function msjRecord (msj) {
+        game.fillStyle = 'yellow';
+        game.fillRect(0, (canvasSize/2), canvasSize, (canvasSize/9));
+        game.fillStyle = 'green';
+        game.textAlign = 'center';
+        game.fillText(msj,(canvasSize/2),(canvasSize/1.7), (canvasSize));
       }
       //Resta vidas si colisionas y si lo haces mas de tres veces el persona empieza en el nivel 0//
       function levelFail() {
         lives --;
-        if (lives <= 0) {
+        if (lives === 0) {
+            console.log('moriste')
+            msjSad ('PERDISTE');
             level =0;
             lives = 3;
             timeStart = undefined;
         }
         playerPosition.x = undefined;
         playerPosition.y = undefined;
-        startGame();
+        setTimeout (startGame,1000)
       }
-
+      //muestra el emoji fuego cuando hay un colision y borra al personaje//
+      function showColision() {
+        game.fillText (emojis['BOMB_COLLISION'], playerPosition.x, playerPosition.y);
+        playerPosition.x = undefined;
+        playerPosition.y = undefined;
+        console.log ('choque');
+      }
       //muestra las vidas//
       function showLives () {
         //Array indica que se va a crear un array con la misma cantidad de elementos que tiene lives y .fill inserta en cada lugar del array un corazon//
@@ -231,12 +266,19 @@ window.addEventListener('resize', setCanvasSize);
         spanRecord.innerHTML = localStorage.getItem('record_time');
 
     }
+    
+    
+    //le da uso a los botones//
     window.addEventListener ('keydown', moveByKeys);
     btnUp.addEventListener ('click', moveUp );
     btnDown.addEventListener ('click', moveDown);
     btnRight.addEventListener ('click', moveRight);
     btnLeft.addEventListener ('click', moveLeft);
-
+    // reinicia el juego//
+    btnReboot.addEventListener ('click', gameReboot );
+    function gameReboot() {
+       location.reload();
+    }
     //verifica que tecla del teclado se toca y hace una acción//
     function moveByKeys (event){
         if (event.key == 'ArrowUp') {
